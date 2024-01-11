@@ -19,9 +19,9 @@
         <button
           v-for="action in item.state == ButtonActionEnum.Edit ? actions.slice(3) : actions.slice(1, 3)"
           class="m-l-12"
-          @click="() => action.callBack(item)"
+          @click="() => {action.callBack(item, action.afterExecuted)}"
         >
-          <slot name="itemAction" :data="action">{{ action.text }}</slot>
+          <slot name="itemAction" :data="{action, item}">{{ action.text }}</slot>
         </button>
       </li>
     </ul>
@@ -29,9 +29,9 @@
 </template>
 <script setup lang="ts">
 import { h, computed, ref, toRef } from 'vue'
-import { IItem } from './demo/interface.ts'
-import { IButtonAction } from './interface.ts'
-import { ButtonActionEnum } from './enum.ts'
+import { IItem } from '../demo/interface'
+import { IButtonAction } from '../demo/interface'
+import { ButtonActionEnum } from '../demo/enum'
 const props = defineProps<{
   items: IItem[]
 }>()
@@ -43,58 +43,65 @@ const emit = defineEmits<{
   (e: 'update:items', items: IItem[]): void
 }>()
 let backupData = {}
-const itemEditing = ref({})
+const itemEditing = ref<IItem>({})
 
-const actions: IButtonAction = [
+const actions: IButtonAction[] = [
   {
     text: 'Add',
     actionType: ButtonActionEnum.Add,
-    callBack: (item) => {
-      item.order = internalItems.value.length + 1
-      item.id = internalItems.value.length + 1
-      internalItems.value.push(item)
-      emit('update:items', internalItems.value)
+    callBack: (item, afterExcecuted) => {
+      const listUpdate = [...internalItems.value]
+      item.order = listUpdate.length + 1
+      item.id = listUpdate.length + 1
+      listUpdate.push(item)
+      emit('update:items', listUpdate)
       itemEditing.value = {}
+      afterExcecuted && afterExcecuted(item)
     },
   },
   {
     text: 'Edit',
     actionType: ButtonActionEnum.Edit,
-    callBack: (item) => {
+    callBack: (item, afterExcecuted) => {
       backupData = { ...item }
       item.state = ButtonActionEnum.Edit
-      console.log(item)
+      afterExcecuted && afterExcecuted(item)
+
     },
   },
   {
     text: 'Delete',
     actionType: ButtonActionEnum.Delete,
-    callBack: (item) => {
+    callBack: (item, afterExcecuted) => {
       const itemUpdate = internalItems.value.filter((it) => it.id != item.id)
       console.log(itemUpdate)
       emit('update:items', itemUpdate)
+      afterExcecuted && afterExcecuted(item)
     },
   },
 
   {
     text: 'Save',
     actionType: ButtonActionEnum.Save,
-    callBack: (item) => {
+    callBack: (item, afterExcecuted) => {
       //const itemUpdate = internalItems.filter((it) => it.id != item.id)
       //emit('update:items', itemUpdate)
       item.state = ButtonActionEnum.None
+      afterExcecuted && afterExcecuted(item)
+
     },
   },
   {
     text: 'Cancel',
     actionType: ButtonActionEnum.Cancel,
-    callBack: (item) => {
+    callBack: (item, afterExcecuted) => {
       console.log(item)
       Object.entries(backupData).forEach(([key, value]) => {
         item[key] = value
       })
 
       item.state = ButtonActionEnum.None
+      afterExcecuted && afterExcecuted(item)
     },
   },
 ]
